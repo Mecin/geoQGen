@@ -26,7 +26,14 @@ Perhaps a little code snippet.
 
     use Geo::Geocalc;
 
-    my $foo = Geo::Geocalc->new();
+	&getDistance($lat1,$lng1,$lat2,$lng2,$R) # calculate distance between two points on Earth, in kilo-meters.
+
+	&getLat($lat1,$lng1,$lng2,$distance,$R) # calculate latitude of the point based on other point and distance on Earth between them.
+
+	&getLng($lat1,$lng1,$lat2,$distance,$R) # calculate longitude of the point based on other point and distance on Earth between them.
+
+	&generateKMLPlacemarks($outputKmlFilename, @coordinates); # generate outputKmlFilename.kml with Placemarks based on an array of coordinates ($lat1, $lng1, $lat2, $lng2, ...)
+
     ...
 
 =head1 EXPORT
@@ -71,6 +78,9 @@ You can find documentation for this module with the perldoc command.
 
 
 You can also look for information at:
+
+https://github.com/Mecin/geoQGen
+
 
 =over 4
 
@@ -138,6 +148,43 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 =cut
+sub generateKMLPlacemarks {
+	my $fileName = shift;
+	my @coordinates = @_;
+
+	if(scalar(@coordinates)%2 == 0) {
+
+		open(FILE, ">$fileName") || die "Can not open file $fileName!";
+		print FILE &getKMLHeader;
+		print FILE "		<Folder>";
+		print FILE "			<name>Placemarks</name>";
+		print FILE "			<description>Generated Placemarks with generateKMLPlacemarks function</description>";
+
+		for(my $i = 0; $i < scalar(@coordinates); $i+=2) {
+			print FILE "		<Placemark>";
+			print FILE "			<Point>";
+			print FILE "				<coordinates>" . $coordinates[$i+1] . ", " . $coordinates[$i] . "</coordinates>";
+			print FILE "			</Point>";
+			print FILE "		</Placemark>";
+		}
+		print FILE "		</Folder>";
+		print FILE &getKMLClose;
+		close FILE;
+	} else {
+		print "ERROR. Array must contain pairs of coords. Length of array is not an even number (".scalar(@coordinates).")."
+	}
+};
+
+sub getKMLHeader {
+	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<kml xmlns=\"http://www.opengis.net/kml/2.2\">
+	<Document>"
+};
+
+sub getKMLClose {
+	"	</Document>
+</kml>"
+};
 
 sub getDistance {
 	my ($lat1, $lng1, $lat2, $lng2, $R) = 0;
@@ -148,7 +195,7 @@ sub getDistance {
 
 sub getLat {
 	my ($lat1, $lng1, $lng2, $dist, $R) = 0;
-	($lat1, $lng1,  $lng2, $dist, $R) = @_;
+	($lat1, $lng1, $lng2, $dist, $R) = @_;
 	
 	return asin(sin(deg2rad($lat1))*cos($dist/$R)+cos(deg2rad($lat1))*sin($dist/$R)*cos(0));
 };
