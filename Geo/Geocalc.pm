@@ -186,6 +186,91 @@ sub getKMLClose {
 </kml>"
 };
 
+sub getMax {
+	my $max = $_[0];
+
+	foreach my $tmp (@_) {
+		if($max < $tmp) {
+			$max = $tmp;
+		}
+	}
+	$max;
+};
+
+sub getMin {
+	my $min = $_[0];
+
+	foreach my $tmp (@_) {
+		if($min > $tmp) {
+			$min = $tmp;
+		}
+	}
+	$min;
+};
+
+sub generateGrid {
+	my ($startLat, $startLng, $stopLat, $stopLng, $width, $tmpLat, $tmpLng, $gridHashRef, $counter, $R) = 0;
+	($startLat, $startLng, $stopLat, $stopLng, $width, $gridHashRef, $R) = @_;
+
+	$R //= 6371; #//
+
+	my $maxLat = &getMax(($startLat, $stopLat));
+	#print $maxLat;
+	my $maxLng = &getMax(($startLng, $stopLng));
+	#print $maxLng;
+	my $minLat = &getMin(($startLat, $stopLat));
+	#print $minLat;
+	my $minLng = &getMin(($startLng, $stopLng));
+	#print $minLng;
+
+	#&generateKMLPlacemarks("test.kml", ($minLat,$minLng,$minLat,$maxLng,$maxLat,$maxLng,$maxLat,$minLng));	
+
+	$tmpLng = $minLng;
+
+	$counter++;
+
+	while($tmpLng < $maxLng) {
+		#print "1. $tmpLng < $maxLng";
+		$tmpLat = $minLat;
+
+		while($tmpLat < $maxLat) {
+			#print "$maxLat, $maxLng, $minLat, $minLng, $tmpLng, $tmpLat";
+			#print "2. $tmpLat < $maxLat";
+			#A
+			${$gridHashRef}{$counter}[0] = $tmpLat;
+			${$gridHashRef}{$counter}[1] = $tmpLng;
+			#print "A (${$gridHashRef}{$counter}[2], ${$gridHashRef}{$counter}[3])";
+			#B
+			${$gridHashRef}{$counter}[2] = ${$gridHashRef}{$counter}[0];
+			${$gridHashRef}{$counter}[3] = &getLng(${$gridHashRef}{$counter}[0], ${$gridHashRef}{$counter}[1], ${$gridHashRef}{$counter}[0], $width, $R);
+			#print "B (${$gridHashRef}{$counter}[4], ${$gridHashRef}{$counter}[5])";
+			#C
+			${$gridHashRef}{$counter}[4] = &getLat(${$gridHashRef}{$counter}[2], ${$gridHashRef}{$counter}[3], ${$gridHashRef}{$counter}[3], $width, $R);
+			${$gridHashRef}{$counter}[5] = ${$gridHashRef}{$counter}[3]; 
+			#print "C (${$gridHashRef}{$counter}[6], ${$gridHashRef}{$counter}[7])";
+			#D
+			${$gridHashRef}{$counter}[6] = &getLat(${$gridHashRef}{$counter}[0], ${$gridHashRef}{$counter}[1], ${$gridHashRef}{$counter}[0], $width, $R);
+			${$gridHashRef}{$counter}[7] = ${$gridHashRef}{$counter}[1];
+			#print "D (${$gridHashRef}{$counter}[8], ${$gridHashRef}{$counter}[9])";
+
+
+			$tmpLat = ${$gridHashRef}{$counter}[4];
+			$counter++;
+		}
+		$tmpLng = ${$gridHashRef}{($counter-1)}[3];
+	}
+};
+
+sub isInWaterUnix {
+	my ($lat, $lng, $imgURL) = 0;
+	($lat, $lng) = @_;
+
+	$imgURL = "http://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&size=40x40&maptype=roadmap&sensor=false&zoom=15";
+	`wget $imgURL`;
+	
+	0;
+};
+
 sub getDistance {
 	my ($lat1, $lng1, $lat2, $lng2, $R) = 0;
 	($lat1, $lng1, $lat2, $lng2, $R) = @_;
@@ -197,14 +282,14 @@ sub getLat {
 	my ($lat1, $lng1, $lng2, $dist, $R) = 0;
 	($lat1, $lng1, $lng2, $dist, $R) = @_;
 	
-	return asin(sin(deg2rad($lat1))*cos($dist/$R)+cos(deg2rad($lat1))*sin($dist/$R)*cos(0));
+	return (rad2deg(asin(sin(deg2rad($lat1))*cos($dist/$R)+cos(deg2rad($lat1))*sin($dist/$R)*cos(0))));
 };
 
 sub getLng {
 	my ($lat1, $lng1, $lat2, $dist, $R) = 0;
 	($lat1, $lng1, $lat2, $dist, $R) = @_;
 
-	return (deg2rad($lng1) + atan2(sin(90)*sin($dist/$R)*cos(deg2rad($lat1)), cos($dist/$R)-sin(deg2rad($lat1))*sin(deg2rad($lat2))));
+	return (rad2deg(deg2rad($lng1) + atan2(sin(90)*sin($dist/$R)*cos(deg2rad($lat1)), cos($dist/$R)-sin(deg2rad($lat1))*sin(deg2rad($lat2)))));
 };
 
 1; # End of Geo::Geocalc
