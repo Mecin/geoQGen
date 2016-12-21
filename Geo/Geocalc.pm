@@ -20,19 +20,23 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
+Geo::Geocalc simple Perl module for coordinates processing. Aim of this module is to be simply, lightweight and pure.
 
 Perhaps a little code snippet.
 
     use Geo::Geocalc;
 
-	&getDistance($lat1,$lng1,$lat2,$lng2,$R) # calculate distance between two points on Earth, in kilo-meters.
+	&getDistance($lat1,$lng1,$lat2,$lng2,$R) # calculate distance (km) between two points on Earth.
 
-	&getLat($lat1,$lng1,$lng2,$distance,$R) # calculate latitude of the point based on other point and distance on Earth between them.
+	&getLat($lat1,$lng1,$lng2,$distance,$R) # calculate latitude (deg) of the point based on other point and distance on Earth between them.
 
-	&getLng($lat1,$lng1,$lat2,$distance,$R) # calculate longitude of the point based on other point and distance on Earth between them.
+	&getLng($lat1,$lng1,$lat2,$distance,$R) # calculate longitude (deg) of the point based on other point and distance on Earth between them.
 
-	&generateKMLPlacemarks($outputKmlFilename, @coordinates); # generate outputKmlFilename.kml with Placemarks based on an array of coordinates ($lat1, $lng1, $lat2, $lng2, ...)
+	&generateKMLPlacemarks($outputKmlFilename, @coordinates); # generate outputKmlFilename.kml with Placemarks based on an array of coordinates (deg) ($lat1, $lng1, $lat2, $lng2, ...)
+
+	&generateKMLPolygons($outputKmlFilename, \%hashOfCoords); # generate outputKmlFilename.kml with Polygons based on an reference to hash of 0 -> @ of coordinates of corners (deg) , recommended to use hash generated with generateGridCoordinates function
+
+	&generateGridCoordinates($lat1, $lng1, $lat2, $lng2, $width, \%gridCoordinates, $R); # coordinates of opposite corners on Earth to be covered by the grid, size of grid in km, reference to hash of grid output coordinates and optional, Earth radius.
 
     ...
 
@@ -148,6 +152,43 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 =cut
+
+sub generateKMLPolygons {
+	my $fileName = shift;
+	my $polygonsHashRef = shift;
+
+	open(FILE, ">$fileName") || die "Can not open file $fileName!";
+	print FILE &getKMLHeader;
+	print FILE "		<Folder>";
+	print FILE "			<name>Polygons</name>";
+	print FILE "			<description>Generated Polygons with generateKMLPolygons function</description>";
+
+	foreach my $key (keys %{$polygonsHashRef}) {
+		print FILE "			<Placemark>";
+		print FILE "				<Polygon>";
+		print FILE "					<altitudeMode>clampToGround</altitudeMode>";
+		print FILE "					<outerBoundaryIs>";
+		print FILE "						<LinearRing>";
+		print FILE "							<coordinates>";
+
+		print FILE "								${$polygonsHashRef}{$key}[1]," . ${$polygonsHashRef}{$key}[0];
+		print FILE "								${$polygonsHashRef}{$key}[3]," . ${$polygonsHashRef}{$key}[2];
+		print FILE "								${$polygonsHashRef}{$key}[5]," . ${$polygonsHashRef}{$key}[4];
+		print FILE "								${$polygonsHashRef}{$key}[7]," . ${$polygonsHashRef}{$key}[6];
+
+		print FILE "							</coordinates>";
+		print FILE "						</LinearRing>";
+		print FILE "					</outerBoundaryIs>";
+		print FILE "				</Polygon>";
+		print FILE "			</Placemark>";
+	}
+
+	print FILE "		</Folder>";
+	print FILE &getKMLClose;
+	close FILE;
+
+};
+
 sub generateKMLPlacemarks {
 	my $fileName = shift;
 	my @coordinates = @_;
@@ -161,11 +202,11 @@ sub generateKMLPlacemarks {
 		print FILE "			<description>Generated Placemarks with generateKMLPlacemarks function</description>";
 
 		for(my $i = 0; $i < scalar(@coordinates); $i+=2) {
-			print FILE "		<Placemark>";
-			print FILE "			<Point>";
-			print FILE "				<coordinates>" . $coordinates[$i+1] . ", " . $coordinates[$i] . "</coordinates>";
-			print FILE "			</Point>";
-			print FILE "		</Placemark>";
+			print FILE "			<Placemark>";
+			print FILE "				<Point>";
+			print FILE "					<coordinates>" . $coordinates[$i+1] . ", " . $coordinates[$i] . "</coordinates>";
+			print FILE "				</Point>";
+			print FILE "			</Placemark>";
 		}
 		print FILE "		</Folder>";
 		print FILE &getKMLClose;
@@ -208,51 +249,68 @@ sub getMin {
 	$min;
 };
 
-sub generateGrid {
+sub randomPlacemarkInsidePolygon {
+	my @polygon = @_;
+	my ($maxLat, $maxLng, $minLat, $minLng) = 0;
+	my ($randLat, $randLng) = 0;
+
+	# check if PMR is belong to rectangle
+	# 
+	#
+	#	D ---------- C
+	#	|	         |
+	#	|	         |
+	#	|	         |
+	#	|	         |
+	#	A ---------- B
+	#
+	# A(0,1) B(2,3) C(4,5) D(6,7)
+	# lat lower than lat of D and greater than lat of A
+	# lng lower than lng of C and greater than lng of D
+
+	$maxLat = $polygon[6];
+	$minLat = $polygon[0];
+	$maxLng = $polygon[5];
+	$minLng = $polygon[7];
+
+	$randLat = $minLat + rand($maxLat - $minLat);
+	$randLng = $minLng + rand($maxLng - $minLng);
+
+	($randLat, $randLng);
+};
+
+sub generateGridCoordinates {
 	my ($startLat, $startLng, $stopLat, $stopLng, $width, $tmpLat, $tmpLng, $gridHashRef, $counter, $R) = 0;
 	($startLat, $startLng, $stopLat, $stopLng, $width, $gridHashRef, $R) = @_;
 
 	$R //= 6371; #//
 
 	my $maxLat = &getMax(($startLat, $stopLat));
-	#print $maxLat;
 	my $maxLng = &getMax(($startLng, $stopLng));
-	#print $maxLng;
 	my $minLat = &getMin(($startLat, $stopLat));
-	#print $minLat;
 	my $minLng = &getMin(($startLng, $stopLng));
-	#print $minLng;
-
-	#&generateKMLPlacemarks("test.kml", ($minLat,$minLng,$minLat,$maxLng,$maxLat,$maxLng,$maxLat,$minLng));	
 
 	$tmpLng = $minLng;
 
 	$counter++;
 
 	while($tmpLng < $maxLng) {
-		#print "1. $tmpLng < $maxLng";
+
 		$tmpLat = $minLat;
 
 		while($tmpLat < $maxLat) {
-			#print "$maxLat, $maxLng, $minLat, $minLng, $tmpLng, $tmpLat";
-			#print "2. $tmpLat < $maxLat";
 			#A
 			${$gridHashRef}{$counter}[0] = $tmpLat;
 			${$gridHashRef}{$counter}[1] = $tmpLng;
-			#print "A (${$gridHashRef}{$counter}[2], ${$gridHashRef}{$counter}[3])";
 			#B
 			${$gridHashRef}{$counter}[2] = ${$gridHashRef}{$counter}[0];
 			${$gridHashRef}{$counter}[3] = &getLng(${$gridHashRef}{$counter}[0], ${$gridHashRef}{$counter}[1], ${$gridHashRef}{$counter}[0], $width, $R);
-			#print "B (${$gridHashRef}{$counter}[4], ${$gridHashRef}{$counter}[5])";
 			#C
 			${$gridHashRef}{$counter}[4] = &getLat(${$gridHashRef}{$counter}[2], ${$gridHashRef}{$counter}[3], ${$gridHashRef}{$counter}[3], $width, $R);
 			${$gridHashRef}{$counter}[5] = ${$gridHashRef}{$counter}[3]; 
-			#print "C (${$gridHashRef}{$counter}[6], ${$gridHashRef}{$counter}[7])";
 			#D
 			${$gridHashRef}{$counter}[6] = &getLat(${$gridHashRef}{$counter}[0], ${$gridHashRef}{$counter}[1], ${$gridHashRef}{$counter}[0], $width, $R);
 			${$gridHashRef}{$counter}[7] = ${$gridHashRef}{$counter}[1];
-			#print "D (${$gridHashRef}{$counter}[8], ${$gridHashRef}{$counter}[9])";
-
 
 			$tmpLat = ${$gridHashRef}{$counter}[4];
 			$counter++;
@@ -262,11 +320,11 @@ sub generateGrid {
 };
 
 sub isInWaterUnix {
-	my ($lat, $lng, $imgURL) = 0;
-	($lat, $lng) = @_;
+	my ($lat, $lng, $key, $imgURL) = 0;
+	($lat, $lng, $key) = @_;
 
-	$imgURL = "http://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&size=40x40&maptype=roadmap&sensor=false&zoom=15";
-	`wget $imgURL`;
+	$imgURL = "http://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&size=40x40&maptype=roadmap&sensor=false&zoom=15&key=$key";
+	`wget $imgURL -O static`;
 	
 	0;
 };
