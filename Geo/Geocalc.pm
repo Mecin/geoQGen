@@ -319,16 +319,6 @@ sub generateGridCoordinates {
 	}
 };
 
-sub isInWaterUnix {
-	my ($lat, $lng, $key, $imgURL) = 0;
-	($lat, $lng, $key) = @_;
-
-	$imgURL = "http://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&size=40x40&maptype=roadmap&sensor=false&zoom=15&key=$key";
-	`wget $imgURL -O static`;
-	
-	0;
-};
-
 sub getDistance {
 	my ($lat1, $lng1, $lat2, $lng2, $R) = 0;
 	($lat1, $lng1, $lat2, $lng2, $R) = @_;
