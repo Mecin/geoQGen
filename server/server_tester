@@ -1,0 +1,2 @@
+curl -v -H "Content-Type: application/json" -X POST   -d '{"latitude":"51.82761", "longitude":"19.31543"}' http://mecin.cba.pl/get_quest.php
+
