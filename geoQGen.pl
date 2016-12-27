@@ -105,7 +105,7 @@ my $lat2 = 51.66745;
 my $lng2 = 19.62432;
 
 my $R = 6378.41;
-my $width = 1; # km x km
+my $width = 100; # km x km
 my %gridCoordinates;
 
 print "";
@@ -169,6 +169,13 @@ foreach my $sector (keys %gridCoordinates) {
 			}
 		}
 	}
+
+	my $len = scalar(@questsCoords);
+
+	while($len < $nOQ) {
+		push @questsCoords, 0, 0;
+	}
+
 	push @globalPlacemarks, @questsCoords;
 	push @{$gridCoordinates{$sector}}, @questsCoords;
 }
@@ -182,3 +189,26 @@ print ">> generateKMLPlacemarks with generated random Placemark ";
 print ">> Done.";
 print "";
 
+print "";
+print ">> generating sql scripts";
+
+open(FILE_SECTOR, ">sector.sql") || die "Can not open file sector.sql!";
+
+open(FILE_QUEST, ">quest.sql") || die "Can not open file quest.sql!";
+
+foreach my $sector (sort { $a <=> $b } keys %gridCoordinates) {
+
+	print FILE_SECTOR "INSERT INTO sector (a1, a2, b1, b2, c1, c2, d1, d2) VALUES ('$gridCoordinates{$sector}[0]', '$gridCoordinates{$sector}[1]', '$gridCoordinates{$sector}[2]', '$gridCoordinates{$sector}[3]', '$gridCoordinates{$sector}[4]', '$gridCoordinates{$sector}[5]', '$gridCoordinates{$sector}[6]', '$gridCoordinates{$sector}[7]');";
+
+	for(my $i = 1; $i < ($nOQ+1); $i++) {
+		print FILE_QUEST "INSERT INTO quest (lat, lng, pos, sid) VALUES ('".$gridCoordinates{$sector}[(7+$i)]."', '".$gridCoordinates{$sector}[(7+$i+1)]."', '$i', '$sector');";
+
+	}
+}
+
+close FILE_QUEST;
+
+close FILE_SECTOR;
+
+print ">> Done.";
+print "";
