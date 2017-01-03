@@ -280,10 +280,11 @@ sub randomPlacemarkInsidePolygon {
 };
 
 sub generateGridCoordinates {
-	my ($startLat, $startLng, $stopLat, $stopLng, $width, $tmpLat, $tmpLng, $gridHashRef, $counter, $R) = 0;
-	($startLat, $startLng, $stopLat, $stopLng, $width, $gridHashRef, $R) = @_;
+	my ($startLat, $startLng, $stopLat, $stopLng, $width, $tmpLat, $tmpLng, $gridHashRef, $counter, $R, $startSectorId) = 0;
+	($startLat, $startLng, $stopLat, $stopLng, $width, $gridHashRef, $R, $startSectorId) = @_;
 
 	$R //= 6371; #//
+	$startSectorId //= 1; #//
 
 	my $maxLat = &getMax(($startLat, $stopLat));
 	my $maxLng = &getMax(($startLng, $stopLng));
@@ -292,7 +293,7 @@ sub generateGridCoordinates {
 
 	$tmpLng = $minLng;
 
-	$counter++;
+	$counter = $startSectorId;
 
 	while($tmpLng < $maxLng) {
 

@@ -72,23 +72,23 @@ my $lat1 = 51.715283;
 my $lng1 = 20.344549;
 my $size = 10; # size x size pixels to analyse
 my $keyFileName = "key";
-if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
-	print "Water";
-}
+#if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
+#	print "Water";
+#}
 
 # water
-$lat1 = 51.80407;
-$lng1 = 19.44236;
-if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
-	print "Water";
-}
+#$lat1 = 51.80407;
+#$lng1 = 19.44236;
+#if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
+#	print "Water";
+#}
 
 # sea
-$lat1 = 55.47885;
-$lng1 = 18.45703;
-if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
-	print "Water";
-}
+#$lat1 = 55.47885;
+#$lng1 = 18.45703;
+#if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
+#	print "Water";
+#}
 
 # generate grid
 
@@ -98,19 +98,32 @@ if(&isInWaterUnix($lat1, $lng1, $size, &getGoogleApiKey($keyFileName))) {
 #my $lat2 = 49.06666;
 #my $lng2 = 23.81835;
 
+# Lodzkie corners
+#$lat1 = 52.26143;
+#$lng1 = 18.09448;
+#my $lat2 = 51.26878;
+#my $lng2 = 20.8081;
+
 # Lodz corners
-$lat1 = 51.82771;
-$lng1 = 19.31533;
-my $lat2 = 51.66745;
-my $lng2 = 19.62432;
+#$lat1 = 51.82771;
+#$lng1 = 19.31533;
+#my $lat2 = 51.66745;
+#my $lng2 = 19.62432;
+
+# Piotrkow corners
+$lat1 = 51.44138;
+$lng1 = 19.62982;
+my $lat2 = 51.37488;
+my $lng2 = 19.77075;
+
 
 my $R = 6378.41;
-my $width = 100; # km x km
+my $width = 1; # km x km
 my %gridCoordinates;
 
 print "";
 print ">> generateGridCoordinates ...";
-&Geo::Geocalc::generateGridCoordinates($lat1, $lng1, $lat2, $lng2, $width, \%gridCoordinates, $R);
+&Geo::Geocalc::generateGridCoordinates($lat1, $lng1, $lat2, $lng2, $width, \%gridCoordinates, $R, 433);
 print ">> Done.";
 print "";
 
@@ -147,7 +160,7 @@ foreach my $sector (keys %gridCoordinates) {
 
 			if(&isInWaterUnix($qLat, $qLng, $size, &getGoogleApiKey($keyFileName))) {
 				$nOT--;
-				print "Water.";
+				print "Water (".(10-$nOT)."/10).";
 			} else {
 				my $length = scalar @questsCoords;
 
@@ -163,7 +176,7 @@ foreach my $sector (keys %gridCoordinates) {
 						$nOT = 0;
 					} else {
 						$nOT--;
-						print "Distance too low.";
+						print "Distance too low (".(10-$nOT)."/10).";
 					}
 				}
 			}
@@ -172,8 +185,9 @@ foreach my $sector (keys %gridCoordinates) {
 
 	my $len = scalar(@questsCoords);
 
-	while($len < $nOQ) {
+	while($len < ($nOQ*2)) {
 		push @questsCoords, 0, 0;
+		$len = scalar(@questsCoords);
 	}
 
 	push @globalPlacemarks, @questsCoords;
@@ -191,7 +205,7 @@ print "";
 
 print "";
 print ">> generating sql scripts";
-
+my $qNum;
 open(FILE_SECTOR, ">sector.sql") || die "Can not open file sector.sql!";
 
 open(FILE_QUEST, ">quest.sql") || die "Can not open file quest.sql!";
@@ -200,8 +214,12 @@ foreach my $sector (sort { $a <=> $b } keys %gridCoordinates) {
 
 	print FILE_SECTOR "INSERT INTO sector (a1, a2, b1, b2, c1, c2, d1, d2) VALUES ('$gridCoordinates{$sector}[0]', '$gridCoordinates{$sector}[1]', '$gridCoordinates{$sector}[2]', '$gridCoordinates{$sector}[3]', '$gridCoordinates{$sector}[4]', '$gridCoordinates{$sector}[5]', '$gridCoordinates{$sector}[6]', '$gridCoordinates{$sector}[7]');";
 
-	for(my $i = 1; $i < ($nOQ+1); $i++) {
-		print FILE_QUEST "INSERT INTO quest (lat, lng, pos, sid) VALUES ('".$gridCoordinates{$sector}[(7+$i)]."', '".$gridCoordinates{$sector}[(7+$i+1)]."', '$i', '$sector');";
+	$qNum = 1;
+	
+	for(my $i = 1; $i < ((2*$nOQ)+1); $i+=2) {
+		
+		print FILE_QUEST "INSERT INTO quest (lat, lng, pos, sid) VALUES ('".$gridCoordinates{$sector}[(7+$i)]."', '".$gridCoordinates{$sector}[(7+$i+1)]."', '$qNum', '$sector');";
+		$qNum++;
 
 	}
 }
