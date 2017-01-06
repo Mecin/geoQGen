@@ -118,7 +118,7 @@ my $lng2 = 19.77075;
 
 
 my $R = 6378.41;
-my $width = 1; # km x km
+my $width = 15; # km x km
 my %gridCoordinates;
 
 print "";
